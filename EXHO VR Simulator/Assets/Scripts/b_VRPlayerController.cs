@@ -6,7 +6,7 @@ using UnityEngine.XR;
 
 [RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(CapsuleCollider))]
-public class XRPlayerController : MonoBehaviour
+public class b_VRPlayerController : MonoBehaviour
 {
     [Header("Behaviour Options")]
 
