@@ -3,13 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.XR;
+using UnityEngine.SpatialTracking;
 
-[RequireComponent(typeof(Rigidbody))]
-[RequireComponent(typeof(CapsuleCollider))]
+
 public class b_VRPlayerController : MonoBehaviour
 {
-    [Header("Behaviour Options")]
-
     [SerializeField]
     private float speed = 10.0f;
 
@@ -41,11 +39,20 @@ public class b_VRPlayerController : MonoBehaviour
 
     private bool buttonPressed;
 
+    private bool isSeated = false;
+
     private Rigidbody rigidBodyComponent;
 
     private CapsuleCollider capsuleCollider;
 
     private List<InputDevice> devices = new List<InputDevice>();
+    private List<XRNodeState> mNodeStates = new List<XRNodeState>();
+
+    private Vector3 mHeadPos;
+
+    private Quaternion mHeadRot;
+
+    public GameObject bHMD, bLHand, bRHand, steerWheelPos, roamFreePos;
 
     public enum CapsuleDirection
     {
@@ -77,16 +84,20 @@ public class b_VRPlayerController : MonoBehaviour
         controller = devices.FirstOrDefault();
     }
 
-    void Update()
+    void FixedUpdate()
     {
         if (controller == null)
         {
             GetDevice();
         }
 
-        UpdateMovement();
+        if (!isSeated)
+        {
+            UpdateMovement();
+            UpdateJump(controller);
+        }
 
-        UpdateJump(controller);
+        EnterOrExitChair();
     }
 
     private void UpdateMovement()
@@ -97,13 +108,11 @@ public class b_VRPlayerController : MonoBehaviour
 
         if (controller.TryGetFeatureValue(primary2DVector, out primary2dValue) && primary2dValue != Vector2.zero)
         {
-            Debug.Log("primary2DAxisClick is pressed " + primary2dValue);
-
             var xAxis = primary2dValue.x * speed * Time.deltaTime;
             var zAxis = primary2dValue.y * speed * Time.deltaTime;
 
-            Vector3 right = transform.TransformDirection(Vector3.right);
-            Vector3 forward = transform.TransformDirection(Vector3.forward);
+            Vector3 right = bHMD.transform.TransformDirection(Vector3.right);
+            Vector3 forward = bHMD.transform.TransformDirection(Vector3.forward);
 
             transform.position += right * xAxis;
             transform.position += forward * zAxis;
@@ -117,7 +126,9 @@ public class b_VRPlayerController : MonoBehaviour
         Debug.DrawRay((new Vector3(transform.position.x, transform.position.y, transform.position.z)), Vector3.down, Color.red, 1.0f);
 
         if (!isGrounded && checkForGroundOnJump)
+        {
             return;
+        }
 
         bool buttonValue;
 
@@ -125,15 +136,33 @@ public class b_VRPlayerController : MonoBehaviour
         {
             if (!buttonPressed)
             {
-                Debug.Log("primaryButton is pressed " + buttonValue);
                 buttonPressed = true;
                 rigidBodyComponent.AddForce(Vector3.up * jumpForce);
             }
         }
         else if (buttonPressed)
         {
-            Debug.Log("primaryButton is released " + buttonValue);
             buttonPressed = false;
+        }
+    }
+
+    private void EnterOrExitChair()
+    {
+        //bool buttonValue;
+
+        if (Input.GetKeyDown(KeyCode.JoystickButton3))
+        {
+            if (!isSeated)
+            {
+                isSeated = true;
+                gameObject.transform.position = steerWheelPos.transform.position;
+                //gameObject.GetComponent<Rigidbody>().constraints = RigidbodyConstraints.FreezePosition;
+            }
+            else if (isSeated)
+            {
+                isSeated = false;
+                gameObject.transform.position = roamFreePos.transform.position;
+            }
         }
     }
 }
